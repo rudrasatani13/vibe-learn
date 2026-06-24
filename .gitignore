@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs / temp
+*.log
+tmp/
+.tmp/
+
+# Python (in case scripts are added later)
+__pycache__/
+*.py[cod]
+.venv/
+venv/

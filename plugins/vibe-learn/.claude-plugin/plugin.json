@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "vibe-learn",
+  "displayName": "vibe-learn",
+  "version": "1.0.0",
+  "description": "Turns vibe coding into active learning: explains the major concepts in code as it's written, then quizzes you to make it stick. Non-blocking, adapts to beginner/intermediate/advanced.",
+  "author": {
+    "name": "Rudra Satani",
+    "url": "https://github.com/rudrasatani13"
+  },
+  "homepage": "https://github.com/rudrasatani13/vibe-learn",
+  "repository": "https://github.com/rudrasatani13/vibe-learn",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "skill",
+    "learning",
+    "teaching",
+    "education",
+    "vibe-coding",
+    "quiz",
+    "tutor"
+  ]
+}
