@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "vibe-learn",
   "displayName": "vibe-learn",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Turns vibe coding into active learning: explains the major concepts in code as it's written, then quizzes you to make it stick. Non-blocking, adapts to beginner/intermediate/advanced.",
   "author": {
     "name": "Rudra Satani",

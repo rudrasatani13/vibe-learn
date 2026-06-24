@@ -8,7 +8,11 @@ A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote i
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-6C3EF5)](https://code.claude.com/docs/en/skills)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](./CHANGELOG.md)
+
+<br/>
+
+<img src="assets/example.svg" alt="vibe-learn example — a Learn block with key takeaways, followed by a Quick check quiz" width="100%">
 
 </div>
 
@@ -103,6 +107,43 @@ It also **matches your language** — write in Hinglish and the lessons come bac
 
 ---
 
+## Always-teach mode (optional, deterministic)
+
+The `/vibe-learn` skill is *soft* — Claude decides when a change is worth teaching. If you'd rather **guarantee** a 🎓 Learn reminder after every source-code edit, add the bundled hook. It's a `PostToolUse` hook that fires on `Write`/`Edit`, skips non-code files (docs, config, data), and injects a factual reminder so Claude reliably teaches. Pair it with the skill for the full style.
+
+**Setup** (requires [`jq`](https://jqlang.github.io/jq/)):
+
+```bash
+# 1. Copy the hook somewhere stable and make it executable
+mkdir -p ~/.claude/hooks
+cp vibe-learn/plugins/vibe-learn/hooks/always-teach.sh ~/.claude/hooks/vibe-learn-always-teach.sh
+chmod +x ~/.claude/hooks/vibe-learn-always-teach.sh
+```
+
+```jsonc
+// 2. Add to ~/.claude/settings.json  (merge into any existing "hooks")
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/vibe-learn-always-teach.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+To turn it off, remove that block from `settings.json`. It's intentionally **not** auto-enabled, so the default experience stays non-blocking.
+
+---
+
 ## How it works
 
 vibe-learn is a standard [Agent Skill](https://agentskills.io). When invoked, its instructions stay in context for the session and act as standing guidance: after each *major* change Claude adds a Learn block; after trivial edits (typos, renames, formatting) it stays silent. The teaching method is **ground-up** — no jargon is ever left undefined — and questions are designed to prove understanding, not test syntax trivia.
@@ -110,15 +151,19 @@ vibe-learn is a standard [Agent Skill](https://agentskills.io). When invoked, it
 ```
 vibe-learn/
 ├── .claude-plugin/
-│   └── marketplace.json          # marketplace manifest (Option B install)
+│   └── marketplace.json           # marketplace manifest (Option B install)
 ├── plugins/
 │   └── vibe-learn/
 │       ├── .claude-plugin/
-│       │   └── plugin.json        # plugin manifest
+│       │   └── plugin.json         # plugin manifest
+│       ├── hooks/
+│       │   └── always-teach.sh     # optional deterministic "always-teach" hook
 │       └── skills/
 │           └── vibe-learn/
-│               ├── SKILL.md       # the skill: behaviour, triggers, quiz logic
-│               └── reference.md   # teaching methodology, question patterns, examples
+│               ├── SKILL.md        # the skill: behaviour, triggers, quiz logic
+│               └── reference.md    # teaching methodology, question patterns, examples
+├── assets/
+│   └── example.svg                 # illustrative example shown above
 ├── README.md
 ├── LICENSE
 └── CHANGELOG.md
@@ -128,7 +173,7 @@ vibe-learn/
 
 ## Roadmap
 
-- [ ] Optional `PostToolUse` hook for users who want guaranteed teaching after *every* edit (currently it's model-driven and non-blocking by design).
+- [x] Optional `PostToolUse` hook for guaranteed teaching after *every* edit — see [Always-teach mode](#always-teach-mode-optional-deterministic). *(added in v1.1.0)*
 - [ ] A lightweight per-session "what you learned" recap.
 - [ ] More worked examples across languages/stacks in `reference.md`.
 
