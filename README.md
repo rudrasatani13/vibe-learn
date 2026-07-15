@@ -4,11 +4,11 @@
 
 **Learn while you vibe code.**
 
-A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote it, I don't know how" into "I shipped it *and* I understand it." After writing meaningful code, Claude surfaces the **major concepts** in it (jargon explained from scratch) and **quizzes you** so the knowledge actually sticks — without ever slowing down your build.
+A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote it, I don't know how" into "I shipped it *and* I understand it." After meaningful code (or a real bug fix), Claude surfaces **major concepts**, optional **mental models**, and **non-blocking quizzes** — with recap, spaced review, and cross-session progress so it still sticks tomorrow.
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-6C3EF5)](https://code.claude.com/docs/en/skills)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](./CHANGELOG.md)
 
 <br/>
 
@@ -24,11 +24,46 @@ Vibe coding is fast, but it has a cost: you end up with a working app you can't 
 
 **vibe-learn** sits in the middle. It rides *alongside* the build:
 
-- After a **meaningful** change (a new function, hook, tricky bit of logic), it adds a short **🎓 Learn** block — 2–4 key takeaways, with any jargon explained in plain words.
-- At natural checkpoints it asks a **📝 Quick check** — 2–3 questions mixing recall, application, and debugging-traps.
-- Quizzes are **non-blocking**: answer them, or type `skip`/`next` and keep shipping. It never stalls your work or nags.
+- After a **meaningful** change → short **🎓 Learn** block (2–4 takeaways, jargon from scratch).
+- After a **real bug fix** → **🐛 Bug class** (root cause, fix idea, prevention).
+- After a **feature slice** → **🧠 Mental model** (how the pieces connect + failure points).
+- At natural pauses → **📝 Quick check**, **🔮 Predict**, or **🎤 Interview** questions — all **non-blocking**.
+- Across sessions → **`.vibe-learn/progress.md`** + **`/vibe-learn review`** (spaced repetition).
+- End of day → **`/vibe-learn recap`**.
 
-It changes *nothing* about how the code itself gets written — same quality, same scope. It only adds teaching around it.
+It changes *nothing* about how the code itself gets written. It only adds teaching around it.
+
+---
+
+## Architecture (v1.2)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Session (in context)                    │
+│  active · level · density · interview · concepts · shaky    │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+     triggers: major code │ bug fix │ feature checkpoint
+                             │
+         ┌───────────────────┼───────────────────┐
+         ▼                   ▼                   ▼
+   🎓 Learn            🐛 Bug class        🧠 Mental model
+         │                   │                   │
+         └───────────────────┼───────────────────┘
+                             ▼
+              📝 Quiz · 🔮 Predict · 🎤 Interview
+                     (non-blocking)
+                             │
+                             ▼
+              .vibe-learn/progress.md  ←── recap / review / diagnose
+```
+
+| Layer | Role |
+| :--- | :--- |
+| **SKILL.md** | Standing behaviour: when to teach, block formats, modes, guardrails |
+| **reference.md** | Methodology, question banks, spaced schedule, stack examples |
+| **templates/progress.md** | Schema for cross-session memory |
+| **always-teach.sh** | Optional hook: deterministic reminder after source edits (debounced) |
 
 ---
 
@@ -36,17 +71,17 @@ It changes *nothing* about how the code itself gets written — same quality, sa
 
 You ask Claude to write a data fetcher. Alongside the code, you get:
 
-> 🎓 **Learn — async/await + error handling**
-> • `await` pauses inside this function until `fetch` resolves, so `res` is the real response, not a pending Promise.
-> • `res.ok` is `false` for 4xx/5xx. `fetch` does **not** throw on those — only on network failure — so we throw manually to catch bad statuses.
+> 🎓 **Learn — async/await + error handling**  
+> • `await` pauses inside this function until `fetch` resolves, so `res` is the real response, not a pending Promise.  
+> • `res.ok` is `false` for 4xx/5xx. `fetch` does **not** throw on those — only on network failure — so we throw manually to catch bad statuses.  
 > **Why it matters:** forgetting the `res.ok` check is the classic bug where a 404 silently becomes "undefined data" downstream.
 >
-> 📝 **Quick check** (optional — answer, or say skip/next)
-> 1. Why doesn't `fetch` throw on a 404 by itself?
-> 2. The caller does `const u = await getUser(5)` — what happens to them if the user doesn't exist?
+> 📝 **Quick check** (optional — answer, or say skip/next)  
+> 1. Why doesn't `fetch` throw on a 404 by itself?  
+> 2. The caller does `const u = await getUser(5)` — what happens to them if the user doesn't exist?  
 > 3. How would you add a timeout so this can't hang forever?
 
-Answer in your own words, and Claude gives instant, kind feedback. That's it.
+Answer in your own words → instant, kind feedback. End the day with `/vibe-learn recap`. Tomorrow: `/vibe-learn review` resurfaces shaky concepts.
 
 ---
 
@@ -54,16 +89,14 @@ Answer in your own words, and Claude gives instant, kind feedback. That's it.
 
 > Requires Claude Code. New to skills? See the [official skills docs](https://code.claude.com/docs/en/skills).
 
-### Option A — Copy install (recommended, gives a clean `/vibe-learn` command)
+### Option A — Copy install (recommended, clean `/vibe-learn` command)
 
 ```bash
 git clone https://github.com/rudrasatani13/vibe-learn.git
 cp -r vibe-learn/plugins/vibe-learn/skills/vibe-learn ~/.claude/skills/
 ```
 
-That's it — open Claude Code and type `/vibe-learn`. (Personal skills live in `~/.claude/skills/` and work across all your projects. For a single project only, copy into that project's `.claude/skills/` instead.)
-
-One-liner (no manual clone):
+One-liner:
 
 ```bash
 git clone --depth 1 https://github.com/rudrasatani13/vibe-learn.git /tmp/vibe-learn && \
@@ -71,57 +104,79 @@ git clone --depth 1 https://github.com/rudrasatani13/vibe-learn.git /tmp/vibe-le
   rm -rf /tmp/vibe-learn && echo "✅ vibe-learn installed — type /vibe-learn in Claude Code"
 ```
 
-### Option B — Plugin marketplace (managed install + auto-updates)
+### Option B — Plugin marketplace
 
 ```text
 /plugin marketplace add rudrasatani13/vibe-learn
 /plugin install vibe-learn@vibe-learn
 ```
 
-The command is namespaced as `/vibe-learn:vibe-learn` with this method. Update later with `/plugin marketplace update vibe-learn`.
+Command is namespaced as `/vibe-learn:vibe-learn` with this method. Update with `/plugin marketplace update vibe-learn`.
 
 ---
 
 ## Usage
 
-Turn it on once per session; it stays active until you turn it off.
-
 | Command | What it does |
 | :--- | :--- |
-| `/vibe-learn` | Learn mode **ON** at the default **intermediate** level |
-| `/vibe-learn beginner` | ON — every term explained from zero, gentle questions |
-| `/vibe-learn advanced` | ON — only deep / non-obvious ideas, tougher questions |
-| `/vibe-learn off` | Turn it off, back to normal building |
+| `/vibe-learn` | Learn mode **ON** (level from progress, else intermediate) |
+| `/vibe-learn beginner` \| `intermediate` \| `advanced` | ON at that level |
+| `/vibe-learn quiet` \| `normal` \| `dense` | Teaching intensity |
+| `/vibe-learn interview` | Toggle interview-style design questions |
+| `/vibe-learn diagnose` | Soft 2-question level diagnostic |
+| `/vibe-learn recap` | Session recap + progress update |
+| `/vibe-learn review` | Spaced review of due / shaky concepts |
+| `/vibe-learn status` | Show current mode state |
+| `/vibe-learn off` | Turn off |
 
-You can also just say it in plain language — *"teach me as you build"*, *"learn mode on"*, *"I want to actually understand this"* — and Claude will activate it.
+Plain language works too: *"teach me as you build"*, *"recap what I learned"*, *"quiz me like an interview"*, *"review my shaky concepts"*.
 
 ### Levels
 
-| Level | Takeaways focus | Quiz difficulty |
+| Level | Takeaways | Quiz |
 | :--- | :--- | :--- |
-| `beginner` | Every term from zero, simplest words | Recall-heavy, gentle |
-| `intermediate` *(default)* | Patterns, trade-offs, the "why" | Mix of recall + application |
-| `advanced` | Only non-obvious / easy-to-get-wrong things | Application + debugging-traps |
+| `beginner` | Every term from zero | Recall-heavy, gentle |
+| `intermediate` *(default)* | Patterns, trade-offs, why | Recall + application |
+| `advanced` | Non-obvious / easy-to-get-wrong | Application + traps + interview |
 
-It also **matches your language** — write in Hinglish and the lessons come back in Hinglish.
+### Density
+
+| Density | Feel |
+| :--- | :--- |
+| `quiet` | Almost invisible — high-signal only, prefer single 🔮 Predict |
+| `normal` | Balanced (default) |
+| `dense` | More blocks and checkpoints; still non-blocking |
+
+It **matches your language** — Hinglish in, Hinglish lessons out.
+
+---
+
+## Progress file (cross-session memory)
+
+When useful, the skill creates/updates:
+
+```text
+.vibe-learn/progress.md
+```
+
+Stores concept names, quiz results, `next_review` dates, and shaky flags — **not** secrets or full source. Optional: add `.vibe-learn/` to your project's `.gitignore`. A template ships in the skill at `templates/progress.md`.
 
 ---
 
 ## Always-teach mode (optional, deterministic)
 
-The `/vibe-learn` skill is *soft* — Claude decides when a change is worth teaching. If you'd rather **guarantee** a 🎓 Learn reminder after every source-code edit, add the bundled hook. It's a `PostToolUse` hook that fires on `Write`/`Edit`, skips non-code files (docs, config, data), and injects a factual reminder so Claude reliably teaches. Pair it with the skill for the full style.
+The skill is *soft* — Claude decides when a change is worth teaching. For a **guaranteed reminder** after source edits, install the hook. v1.2 **debounces** same-file spam (~45s) and skips tiny payloads when length is known.
 
 **Setup** (requires [`jq`](https://jqlang.github.io/jq/)):
 
 ```bash
-# 1. Copy the hook somewhere stable and make it executable
 mkdir -p ~/.claude/hooks
 cp vibe-learn/plugins/vibe-learn/hooks/always-teach.sh ~/.claude/hooks/vibe-learn-always-teach.sh
 chmod +x ~/.claude/hooks/vibe-learn-always-teach.sh
 ```
 
 ```jsonc
-// 2. Add to ~/.claude/settings.json  (merge into any existing "hooks")
+// ~/.claude/settings.json  (merge into existing "hooks")
 {
   "hooks": {
     "PostToolUse": [
@@ -140,30 +195,32 @@ chmod +x ~/.claude/hooks/vibe-learn-always-teach.sh
 }
 ```
 
-To turn it off, remove that block from `settings.json`. It's intentionally **not** auto-enabled, so the default experience stays non-blocking.
+Not auto-enabled — default stays non-blocking.
 
 ---
 
 ## How it works
 
-vibe-learn is a standard [Agent Skill](https://agentskills.io). When invoked, its instructions stay in context for the session and act as standing guidance: after each *major* change Claude adds a Learn block; after trivial edits (typos, renames, formatting) it stays silent. The teaching method is **ground-up** — no jargon is ever left undefined — and questions are designed to prove understanding, not test syntax trivia.
+vibe-learn is a standard [Agent Skill](https://agentskills.io). Once invoked, instructions stay in context for the session. After *major* changes Claude teaches; after trivial edits it stays silent. Teaching is **ground-up** (no undefined jargon). Quizzes prove understanding, not syntax trivia. Progress + review close the loop across days.
 
 ```
 vibe-learn/
 ├── .claude-plugin/
-│   └── marketplace.json           # marketplace manifest (Option B install)
+│   └── marketplace.json
 ├── plugins/
 │   └── vibe-learn/
 │       ├── .claude-plugin/
-│       │   └── plugin.json         # plugin manifest
+│       │   └── plugin.json
 │       ├── hooks/
-│       │   └── always-teach.sh     # optional deterministic "always-teach" hook
+│       │   └── always-teach.sh      # optional, debounced (v1.2)
 │       └── skills/
 │           └── vibe-learn/
-│               ├── SKILL.md        # the skill: behaviour, triggers, quiz logic
-│               └── reference.md    # teaching methodology, question patterns, examples
+│               ├── SKILL.md         # behaviour, modes, guardrails
+│               ├── reference.md     # methodology, stacks, spaced review
+│               └── templates/
+│                   └── progress.md  # progress file schema
 ├── assets/
-│   └── example.svg                 # illustrative example shown above
+│   └── example.svg
 ├── README.md
 ├── LICENSE
 └── CHANGELOG.md
@@ -173,9 +230,15 @@ vibe-learn/
 
 ## Roadmap
 
-- [x] Optional `PostToolUse` hook for guaranteed teaching after *every* edit — see [Always-teach mode](#always-teach-mode-optional-deterministic). *(added in v1.1.0)*
-- [ ] A lightweight per-session "what you learned" recap.
-- [ ] More worked examples across languages/stacks in `reference.md`.
+- [x] Optional `PostToolUse` always-teach hook *(v1.1)*
+- [x] Session recap *(v1.2)*
+- [x] Cross-session progress + spaced review *(v1.2)*
+- [x] Soft diagnostic / level detect *(v1.2)*
+- [x] Mental models, bug-class, interview & predict *(v1.2)*
+- [x] Density controls + hook debounce *(v1.2)*
+- [x] Multi-stack worked examples in `reference.md` *(v1.2)*
+- [ ] Optional export of progress for Anki / flashcards
+- [ ] Multi-agent / Cursor-oriented packaging notes
 
 Ideas and PRs welcome.
 
@@ -183,7 +246,7 @@ Ideas and PRs welcome.
 
 ## Contributing
 
-This is a single-file-ish skill — contributions are easy. Open an issue or PR. If you change behaviour, please update both `SKILL.md` and the matching section in `README.md`. To test locally, copy the skill into `~/.claude/skills/` (see Option A) and try it in a real session.
+This is a small skill package — contributions are easy. Open an issue or PR. If you change behaviour, update `SKILL.md`, `reference.md`, and the matching README section. To test: copy into `~/.claude/skills/` and run a real session.
 
 ## License
 

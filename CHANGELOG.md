@@ -4,6 +4,33 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the format of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-07-16
+
+### Added
+- **Session recap** via `/vibe-learn recap` — learned concepts, shaky items, one micro-task.
+- **Cross-session progress** at `.vibe-learn/progress.md` with concept metadata and session log.
+- **Spaced review** via `/vibe-learn review` (due + shaky concepts, simple interval schedule).
+- **Soft diagnostic** via `/vibe-learn diagnose` for level auto-detect.
+- **Density modes**: `quiet` / `normal` / `dense`.
+- **Interview mode** toggle (`/vibe-learn interview`) for design-walkthrough questions.
+- **Predict checks** (🔮) — single non-blocking mental-model questions.
+- **Bug-class blocks** (🐛) as a first-class trigger after non-trivial fixes.
+- **Mental-model blocks** (🧠) at feature / multi-file checkpoints.
+- **`/vibe-learn status`** for session state.
+- Progress **template** at `skills/vibe-learn/templates/progress.md`.
+- Multi-stack worked examples in `reference.md` (React, Next, FastAPI, SQL, auth, Go, tests, …).
+- Diagnostic question bank and spaced-review rules in `reference.md`.
+
+### Changed
+- `SKILL.md` restructured as v1.2 architecture: triggers, formats, modes, progress, guardrails.
+- Always-teach hook **debounced** (~45s per file), skips tiny payloads when length known,
+  expands language extensions, stronger major-vs-trivial reminder text.
+- README documents full command surface, architecture diagram, and progress file.
+- Plugin version bumped to **1.2.0**.
+
+### Fixed
+- Hook spam on multi-step edits of the same file (debounce + tiny-write skip).
+
 ## [1.1.0] - 2026-06-24
 
 ### Added
@@ -29,5 +56,6 @@ All notable changes to this project are documented here. This project adheres to
   calibration, and a full worked example.
 - Plugin marketplace packaging for one-command install + auto-updates.
 
+[1.2.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.2.0
 [1.1.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.1.0
 [1.0.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.0.0

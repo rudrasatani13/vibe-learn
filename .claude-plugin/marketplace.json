@@ -10,7 +10,7 @@
     {
       "name": "vibe-learn",
       "source": "./plugins/vibe-learn",
-      "description": "Turns vibe coding into active learning: explains the major concepts in code as it's written, then quizzes you to make it stick. Non-blocking, adapts to beginner/intermediate/advanced."
+      "description": "Learn while you vibe code — concepts, mental models, recap, spaced review, density + interview modes. Non-blocking."
     }
   ]
 }

@@ -15,6 +15,9 @@
 tmp/
 .tmp/
 
+# Local learning progress (optional; users may commit theirs in app repos)
+.vibe-learn/
+
 # Python (in case scripts are added later)
 __pycache__/
 *.py[cod]
