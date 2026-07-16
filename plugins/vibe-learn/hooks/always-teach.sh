@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# vibe-learn — always-teach hook (optional, opt-in / "hard mode") v1.2
+# vibe-learn — always-teach hook (optional, opt-in / "hard mode") v1.3
 #
 # PostToolUse hook for Write|Edit. After a source-code file is written or
 # edited, injects a factual reminder so the model reliably considers a 🎓 Learn
 # block — the deterministic counterpart to the soft /vibe-learn skill.
 #
-# v1.2 polish:
+# v1.3 polish:
 #   - Still filters to source extensions only.
 #   - Debounces: same file within ~45s does not re-remind (avoids spam on
 #     multi-step edits of one file).
@@ -73,13 +73,13 @@ if [ -f "$state_file" ]; then
 fi
 printf '%s' "$now" > "$state_file" 2>/dev/null || true
 
-ctx="vibe-learn 'always-teach' mode is active (v1.2). The user opted in to learning while they build. \
+ctx="vibe-learn 'always-teach' mode is active (v1.3). The user opted in to learning while they build. \
 A change to ${base} was just written. Per the vibe-learn skill: if this change is non-trivial \
 (new logic, API/pattern, architecture, or a real bug fix), add a short 🎓 Learn block \
 (2-4 takeaways grounded in the code, jargon from scratch) or a 🐛 Bug class block for fixes; \
 at a feature checkpoint consider a 🧠 Mental model; at a natural pause offer a non-blocking \
 quiz / 🔮 Predict. Trivial edits (renames, formatting, imports-only, one-liners) need nothing. \
-Update .vibe-learn/progress.md when a solid new concept lands. Density/level rules from the skill still apply."
+Update .vibe-learn/state.json through the progress script when a solid new concept lands; progress.md is generated. Density/level rules from the skill still apply."
 
 jq -nc --arg ctx "$ctx" \
   '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $ctx}}'

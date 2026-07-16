@@ -1,40 +1,22 @@
 # vibe-learn progress
 
-Human-editable learning memory for this project. Updated by the vibe-learn skill.
-Safe to commit if you want shared progress; otherwise add `.vibe-learn/` to `.gitignore`.
-Do not store secrets, tokens, or large code dumps here — concept names and metadata only.
+Generated human-readable report for `.vibe-learn/state.json`. Use the bundled
+`scripts/progress.py` CLI for updates. Do not store secrets, prompts, or source code.
 
-## Meta
+## Status
 
-- version: 1.2
 - level: intermediate
 - density: normal
 - interview: false
-- last_session: YYYY-MM-DD
-- notes: ""
 
 ## Concepts
 
-<!--
-One block per concept. Copy the template below.
+<!-- Concepts are generated from state.json. -->
 
-### <slug>
-- name: <human title>
-- stack: <e.g. ts/react, python/fastapi, sql>
-- first_seen: YYYY-MM-DD
-- last_seen: YYYY-MM-DD
-- times_taught: 0
-- times_quizzed: 0
-- last_result: none | correct | partial | wrong
-- next_review: YYYY-MM-DD
-- interval_days: 1
-- shaky: false
-- notes: ""
--->
+## Recurring mistakes
+
+<!-- Only concrete evidence from user-written code or user answers is recorded. -->
 
 ## Session log
 
-<!-- Newest first; keep last ~10 sessions. -->
-<!--
-- YYYY-MM-DD: <comma-separated concepts>; shaky: <items or none>
--->
+<!-- Newest first; state history is capped at 20 sessions. -->

@@ -4,6 +4,19 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the format of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] - 2026-07-17
+
+### Added
+- Deterministic `.vibe-learn/state.json` progress engine with atomic writes, validation, rendering, and V1.2 migration backups.
+- Bounded `/vibe-learn challenge` and `/vibe-learn teach-back` workflows.
+- Recurring-mistake taxonomy with concrete evidence and recurrence counts.
+- Split teaching, practice, and progress references for progressive disclosure.
+- State-engine and hook regression tests.
+
+### Changed
+- Claude Code is now stated as the primary supported runtime.
+- Plugin and marketplace metadata updated to 1.3.0.
+
 ## [1.2.0] - 2026-07-16
 
 ### Added
@@ -56,6 +69,7 @@ All notable changes to this project are documented here. This project adheres to
   calibration, and a full worked example.
 - Plugin marketplace packaging for one-command install + auto-updates.
 
+[1.3.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.3.0
 [1.2.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.2.0
 [1.1.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.1.0
 [1.0.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.0.0
