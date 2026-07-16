@@ -8,7 +8,7 @@ A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote i
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-6C3EF5)](https://code.claude.com/docs/en/skills)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](./CHANGELOG.md)
 
 <br/>
 
@@ -22,20 +22,21 @@ A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote i
 
 Vibe coding is fast, but it has a cost: you end up with a working app you can't explain. The code becomes a black box, and you don't grow as a developer. The usual fixes are all-or-nothing — either you stop and read docs (kills the flow), or you ship blind (kills the learning).
 
-**vibe-learn** sits in the middle. It rides *alongside* the build:
+**vibe-learn** sits in the middle. It rides *alongside* the build. Claude Code is the primary supported runtime; the package intentionally uses Claude Code skill and hook extensions:
 
 - After a **meaningful** change → short **🎓 Learn** block (2–4 takeaways, jargon from scratch).
 - After a **real bug fix** → **🐛 Bug class** (root cause, fix idea, prevention).
 - After a **feature slice** → **🧠 Mental model** (how the pieces connect + failure points).
 - At natural pauses → **📝 Quick check**, **🔮 Predict**, or **🎤 Interview** questions — all **non-blocking**.
-- Across sessions → **`.vibe-learn/progress.md`** + **`/vibe-learn review`** (spaced repetition).
+- Across sessions → canonical **`.vibe-learn/state.json`**, generated **`.vibe-learn/progress.md`**, and **`/vibe-learn review`** (spaced repetition).
+- When ready to practice → bounded **`/vibe-learn challenge`** and explain-it-yourself **`/vibe-learn teach-back`**.
 - End of day → **`/vibe-learn recap`**.
 
 It changes *nothing* about how the code itself gets written. It only adds teaching around it.
 
 ---
 
-## Architecture (v1.2)
+## Architecture (v1.3)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -55,14 +56,16 @@ It changes *nothing* about how the code itself gets written. It only adds teachi
                      (non-blocking)
                              │
                              ▼
-              .vibe-learn/progress.md  ←── recap / review / diagnose
+              .vibe-learn/state.json  ←── canonical state
+              .vibe-learn/progress.md ←── generated report
 ```
 
 | Layer | Role |
 | :--- | :--- |
 | **SKILL.md** | Standing behaviour: when to teach, block formats, modes, guardrails |
-| **reference.md** | Methodology, question banks, spaced schedule, stack examples |
-| **templates/progress.md** | Schema for cross-session memory |
+| **references/** | Targeted teaching, practice, and progress guidance |
+| **scripts/progress.py** | Validates, migrates, updates, and renders state atomically |
+| **templates/** | Starter state and legacy-compatible report structure |
 | **always-teach.sh** | Optional hook: deterministic reminder after source edits (debounced) |
 
 ---
@@ -127,6 +130,8 @@ Command is namespaced as `/vibe-learn:vibe-learn` with this method. Update with 
 | `/vibe-learn recap` | Session recap + progress update |
 | `/vibe-learn review` | Spaced review of due / shaky concepts |
 | `/vibe-learn status` | Show current mode state |
+| `/vibe-learn challenge` | Bounded project-grounded practice task |
+| `/vibe-learn teach-back` | Explain a feature in your own words and get evaluated |
 | `/vibe-learn off` | Turn off |
 
 Plain language works too: *"teach me as you build"*, *"recap what I learned"*, *"quiz me like an interview"*, *"review my shaky concepts"*.
@@ -156,16 +161,17 @@ It **matches your language** — Hinglish in, Hinglish lessons out.
 When useful, the skill creates/updates:
 
 ```text
+.vibe-learn/state.json
 .vibe-learn/progress.md
 ```
 
-Stores concept names, quiz results, `next_review` dates, and shaky flags — **not** secrets or full source. Optional: add `.vibe-learn/` to your project's `.gitignore`. A template ships in the skill at `templates/progress.md`.
+Stores concept names, quiz results, review dates, mistake evidence, and profile settings — **not** secrets, prompts, or source. Add `.vibe-learn/` to `.gitignore` if progress is personal. V1.2 Markdown migrates with a backup.
 
 ---
 
 ## Always-teach mode (optional, deterministic)
 
-The skill is *soft* — Claude decides when a change is worth teaching. For a **guaranteed reminder** after source edits, install the hook. v1.2 **debounces** same-file spam (~45s) and skips tiny payloads when length is known.
+The skill is *soft* — Claude decides when a change is worth teaching. For a **guaranteed reminder** after source edits, install the hook. v1.3 keeps it optional, debounces same-file spam (~45s), and skips tiny payloads when length is known.
 
 **Setup** (requires [`jq`](https://jqlang.github.io/jq/)):
 
@@ -201,7 +207,7 @@ Not auto-enabled — default stays non-blocking.
 
 ## How it works
 
-vibe-learn is a standard [Agent Skill](https://agentskills.io). Once invoked, instructions stay in context for the session. After *major* changes Claude teaches; after trivial edits it stays silent. Teaching is **ground-up** (no undefined jargon). Quizzes prove understanding, not syntax trivia. Progress + review close the loop across days.
+vibe-learn is a Claude Code skill. Once invoked, instructions stay in context for the session. After *major* changes Claude teaches; after trivial edits it stays silent. Teaching is **ground-up** (no undefined jargon). Challenges and teach-back add deliberate practice; progress + review close the loop across days.
 
 ```
 vibe-learn/
@@ -212,13 +218,16 @@ vibe-learn/
 │       ├── .claude-plugin/
 │       │   └── plugin.json
 │       ├── hooks/
-│       │   └── always-teach.sh      # optional, debounced (v1.2)
+│       │   └── always-teach.sh      # optional, debounced (v1.3)
 │       └── skills/
 │           └── vibe-learn/
 │               ├── SKILL.md         # behaviour, modes, guardrails
-│               ├── reference.md     # methodology, stacks, spaced review
+│               ├── references/      # teaching, practice, and progress guidance
+│               ├── scripts/
+│               │   └── progress.py  # deterministic state CLI
 │               └── templates/
-│                   └── progress.md  # progress file schema
+│                   ├── state.json
+│                   └── progress.md
 ├── assets/
 │   └── example.svg
 ├── README.md
@@ -236,7 +245,10 @@ vibe-learn/
 - [x] Soft diagnostic / level detect *(v1.2)*
 - [x] Mental models, bug-class, interview & predict *(v1.2)*
 - [x] Density controls + hook debounce *(v1.2)*
-- [x] Multi-stack worked examples in `reference.md` *(v1.2)*
+- [x] Multi-stack worked examples *(v1.2)*
+- [x] Deterministic state and V1.2 migration *(v1.3)*
+- [x] Bounded challenge and teach-back workflows *(v1.3)*
+- [x] Recurring-mistake taxonomy and compact learning map *(v1.3)*
 - [ ] Optional export of progress for Anki / flashcards
 - [ ] Multi-agent / Cursor-oriented packaging notes
 
@@ -246,7 +258,7 @@ Ideas and PRs welcome.
 
 ## Contributing
 
-This is a small skill package — contributions are easy. Open an issue or PR. If you change behaviour, update `SKILL.md`, `reference.md`, and the matching README section. To test: copy into `~/.claude/skills/` and run a real session.
+This is a small skill package — contributions are easy. Open an issue or PR. If you change behaviour, update `SKILL.md`, the targeted files in `references/`, and the matching README section. To test: run `python3 -m unittest discover -s tests` and copy into `~/.claude/skills/` for a real session.
 
 ## License
 

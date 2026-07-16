@@ -1,0 +1,13 @@
+{
+  "schema_version": 2,
+  "profile": {
+    "level": "intermediate",
+    "density": "normal",
+    "interview": false,
+    "focus": null,
+    "goal": null
+  },
+  "concepts": {},
+  "mistake_patterns": {},
+  "sessions": []
+}

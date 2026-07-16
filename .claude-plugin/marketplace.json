@@ -10,7 +10,7 @@
     {
       "name": "vibe-learn",
       "source": "./plugins/vibe-learn",
-      "description": "Learn while you vibe code — concepts, mental models, recap, spaced review, density + interview modes. Non-blocking."
+      "description": "Learn while you vibe code — concepts, challenge practice, teach-back, deterministic progress, recurring mistakes, and non-blocking review."
     }
   ]
 }
