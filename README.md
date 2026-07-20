@@ -12,7 +12,11 @@ A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote i
 
 <br/>
 
-<img src="assets/example.svg" alt="vibe-learn example — a Learn block with key takeaways, followed by a Quick check quiz" width="100%">
+<a href="https://github.com/rudrasatani13/vibe-learn/releases/download/v1.3.0/vibe-learn-demo.mp4">
+  <img src="assets/demo-preview.jpg" alt="Watch the vibe-learn demo — a real bug fix followed by a Learn block and Quick check" width="100%">
+</a>
+
+[▶ Watch the 16-second demo](https://github.com/rudrasatani13/vibe-learn/releases/download/v1.3.0/vibe-learn-demo.mp4)
 
 </div>
 
@@ -229,7 +233,7 @@ vibe-learn/
 │                   ├── state.json
 │                   └── progress.md
 ├── assets/
-│   └── example.svg
+│   └── demo-preview.jpg
 ├── README.md
 ├── LICENSE
 └── CHANGELOG.md
