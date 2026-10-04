@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import subprocess
 import sys
@@ -62,6 +63,63 @@ class ProgressTests(unittest.TestCase):
             result = self.cli(project, "mistake", "--class", "missing-cleanup", "--evidence", "api_key was exposed", check=False)
             self.assertNotEqual(result.returncode, 0)
 
+
+    def test_sessions_merge_per_day_and_track_shaky(self):
+        with tempfile.TemporaryDirectory() as path:
+            project = Path(path); self.cli(project, "init")
+            for name in ("closures", "closures", "debounce"): self.cli(project, "teach", "--concept", name, "--stack", "javascript")
+            self.cli(project, "result", "--concept", "debounce", "--outcome", "wrong")
+            sessions = self.state(project)["sessions"]
+            self.assertEqual(len(sessions), 1)
+            self.assertEqual(sessions[0]["concepts"], ["closures", "debounce"]); self.assertEqual(sessions[0]["shaky"], ["debounce"])
+            self.cli(project, "result", "--concept", "debounce", "--outcome", "correct")
+            self.assertEqual(self.state(project)["sessions"][0]["shaky"], [])
+
+    def test_stats_streak_and_mastery(self):
+        with tempfile.TemporaryDirectory() as path:
+            project = Path(path); self.cli(project, "init")
+            self.cli(project, "teach", "--concept", "sql joins", "--stack", "sql")
+            for _ in range(3): self.cli(project, "result", "--concept", "sql-joins", "--outcome", "correct")
+            data = self.state(project); now = dt.date.today()
+            data["sessions"] += [{"date": (now - dt.timedelta(days=d)).isoformat(), "concepts": [], "shaky": []} for d in (1, 2, 5)]
+            (project / ".vibe-learn/state.json").write_text(json.dumps(data))
+            stats = json.loads(self.cli(project, "stats").stdout)
+            self.assertEqual(stats["streak_days"], 3); self.assertEqual(stats["learning_days"], 4)
+            self.assertEqual(stats["mastered"], 1); self.assertEqual(stats["days_since_last_session"], 0)
+
+    def test_stats_streak_breaks_after_gap(self):
+        with tempfile.TemporaryDirectory() as path:
+            project = Path(path); self.cli(project, "init"); data = self.state(project)
+            data["sessions"] = [{"date": (dt.date.today() - dt.timedelta(days=3)).isoformat(), "concepts": [], "shaky": []}]
+            (project / ".vibe-learn/state.json").write_text(json.dumps(data))
+            stats = json.loads(self.cli(project, "stats").stdout)
+            self.assertEqual(stats["streak_days"], 0); self.assertEqual(stats["days_since_last_session"], 3)
+
+    def test_export_anki_csv_and_markdown(self):
+        with tempfile.TemporaryDirectory() as path:
+            project = Path(path); self.cli(project, "init")
+            self.cli(project, "teach", "--concept", "res.ok check", "--stack", "javascript", "--note", "fetch only throws on network failure")
+            self.cli(project, "teach", "--concept", "effect cleanup", "--stack", "react")
+            self.cli(project, "result", "--concept", "effect-cleanup", "--outcome", "partial")
+            result = json.loads(self.cli(project, "export").stdout)
+            lines = Path(result["path"]).read_text().splitlines()
+            self.assertEqual(lines[:3], ["#separator:tab", "#html:false", "#tags column:3"])
+            self.assertEqual(lines[3].split("\t")[2], "vibe-learn react shaky")
+            self.assertIn("fetch only throws on network failure", lines[4])
+            result = json.loads(self.cli(project, "export", "--format", "csv", "--shaky-only").stdout)
+            self.assertEqual(result["exported"], 1)
+            self.assertEqual(len(Path(result["path"]).read_text().splitlines()), 2)
+            out = project / "cards.md"
+            self.cli(project, "export", "--format", "md", "--out", str(out))
+            self.assertIn("<details>", out.read_text())
+
+    def test_note_rejects_secrets_and_is_capped(self):
+        with tempfile.TemporaryDirectory() as path:
+            project = Path(path); self.cli(project, "init")
+            for i in range(5): self.cli(project, "teach", "--concept", "caching", "--stack", "go", "--note", f"takeaway {i}")
+            self.assertEqual(self.state(project)["concepts"]["caching"]["notes"], ["takeaway 2", "takeaway 3", "takeaway 4"])
+            result = self.cli(project, "teach", "--concept", "caching", "--stack", "go", "--note", "password is hunter2", check=False)
+            self.assertNotEqual(result.returncode, 0)
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,23 +5,35 @@
 ## Commands
 
 ```text
-progress.py init --project <path>
-progress.py migrate --project <path> --dry-run
-progress.py teach --project <path> --concept <name> --stack <stack>
-progress.py result --project <path> --concept <slug> --outcome correct|partial|wrong
-progress.py mistake --project <path> --class <class> --evidence <short safe note>
-progress.py profile --project <path> --level <level> --density <density>
-progress.py due --project <path> --limit 4
-progress.py recap --project <path>
-progress.py validate --project <path>
-progress.py render --project <path>
+progress.py --project <path> init
+progress.py --project <path> migrate --dry-run
+progress.py --project <path> teach --concept <name> --stack <stack> [--note <one-line takeaway>]
+progress.py --project <path> result --concept <slug> --outcome correct|partial|wrong
+progress.py --project <path> mistake --class <class> --evidence <short safe note>
+progress.py --project <path> profile --level <level> --density <density>
+progress.py --project <path> due --limit 4
+progress.py --project <path> recap
+progress.py --project <path> stats
+progress.py --project <path> export [--format anki|csv|md] [--shaky-only] [--out <file>]
+progress.py --project <path> validate
+progress.py --project <path> render
 ```
 
-The script validates dates and schema, normalizes concept slugs, caps history at 20 sessions, rejects bounded evidence that resembles secrets, and writes JSON atomically. A failed read never overwrites malformed state; continue with session-only learning.
+`--project` is a global option and must come before the subcommand.
+
+The script validates dates and schema, normalizes concept slugs, keeps one session entry per day (capped at 60 days), keeps at most three notes per concept, rejects bounded evidence that resembles secrets, and writes JSON atomically. A failed read never overwrites malformed state; continue with session-only learning.
 
 ## Review schedule
 
 First teach and wrong: one day. Partial: two days. Correct: double the previous interval, minimum two and maximum fourteen days. Wrong and partial are shaky; a stable correct review clears shaky.
+
+## Stats and streaks
+
+`stats` returns concept, mastered (not shaky with an interval of at least eight days), shaky, due, and quiz counts plus `streak_days` (consecutive learning days ending today or yesterday), `learning_days`, `last_session`, `days_since_last_session`, and the top recurring mistake. The generated report includes the same summary.
+
+## Export
+
+`export` writes to `.vibe-learn/export/flashcards.<ext>` unless `--out` is given. `anki` is a tab-separated file with Anki import headers (front, back, tags); `csv` includes schedule columns; `md` uses collapsible answers. The card back is the concept's notes, or an explain-it-yourself prompt when there are none. Shaky concepts come first and are tagged `shaky`. Exports contain only stored concept metadata.
 
 ## Mistake taxonomy
 

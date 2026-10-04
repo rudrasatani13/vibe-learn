@@ -4,6 +4,20 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and the format of
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0] - 2026-10-04
+
+### Added
+- `/vibe-learn stats` and `progress.py stats`: streak, learning days, mastered / shaky / due counts, top recurring mistake.
+- Welcome-back nudge: after a 3+ day break with due concepts, one non-blocking line offers a quick review.
+- `/vibe-learn export` and `progress.py export`: Anki (tab-separated with import headers), CSV, or Markdown flashcards, with `--shaky-only` and `--out`.
+- `teach --note` stores a one-line takeaway (max three per concept, secret-checked) used as the flashcard answer.
+- Stats summary section in the generated `progress.md`.
+
+### Fixed
+- Each `teach` call created a new session entry, so a busy day could push all older history past the session cap. Sessions are now one entry per day (cap raised to 60 days).
+- Wrong / partial results are now recorded in today's session `shaky` list, and cleared on a later correct answer; `recap` returns `shaky_today`.
+- `references/progress.md` showed `--project` after the subcommand, which argparse rejects.
+
 ## [1.3.0] - 2026-07-17
 
 ### Added
@@ -69,6 +83,7 @@ All notable changes to this project are documented here. This project adheres to
   calibration, and a full worked example.
 - Plugin marketplace packaging for one-command install + auto-updates.
 
+[1.4.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.4.0
 [1.3.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.3.0
 [1.2.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.2.0
 [1.1.0]: https://github.com/rudrasatani13/vibe-learn/releases/tag/v1.1.0
