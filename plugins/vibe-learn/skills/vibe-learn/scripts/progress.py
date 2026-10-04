@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import datetime as dt
 import json
 import os
@@ -14,8 +16,11 @@ import tempfile
 from pathlib import Path
 
 SCHEMA_VERSION = 2
-MAX_SESSIONS = 20
+MAX_SESSIONS = 60
 MAX_NOTE = 240
+MAX_NOTES = 3
+MASTERED_INTERVAL = 8
+EXPORT_FORMATS = {"anki": "tsv", "csv": "csv", "md": "md"}
 OUTCOMES = {"correct", "partial", "wrong"}
 LEVELS = {"beginner", "intermediate", "advanced"}
 DENSITIES = {"quiet", "normal", "dense"}
@@ -152,11 +157,122 @@ def concept(state: dict, name: str, stack: str) -> tuple[str, dict]:
     return slug, item
 
 
+def today_session(state: dict) -> dict:
+    """Return today's session entry, creating it at the front if needed (one entry per day)."""
+    date = iso_date(today())
+    if state["sessions"] and state["sessions"][0].get("date") == date:
+        return state["sessions"][0]
+    session = {"date": date, "concepts": [], "shaky": []}
+    state["sessions"].insert(0, session)
+    return session
+
+
+def add_unique(items: list, value: str) -> None:
+    if value not in items:
+        items.append(value)
+
+
+def session_dates(state: dict) -> list[dt.date]:
+    dates = set()
+    for session in state["sessions"]:
+        try:
+            dates.add(parse_date(session.get("date")))
+        except ValueError:
+            continue
+    return sorted(dates, reverse=True)
+
+
+def streak(dates: list[dt.date]) -> int:
+    """Consecutive learning days ending today or yesterday."""
+    if not dates or (today() - dates[0]).days > 1:
+        return 0
+    count, expected = 0, dates[0]
+    for date in dates:
+        if date != expected:
+            break
+        count += 1; expected = date - dt.timedelta(days=1)
+    return count
+
+
+def stats(state: dict) -> dict:
+    concepts = state["concepts"].values()
+    dates = session_dates(state)
+    due = [k for k, v in state["concepts"].items() if v["shaky"] or parse_date(v["next_review"]) <= today()]
+    top_mistake = max(state["mistake_patterns"].items(), key=lambda pair: (pair[1]["count"], pair[0]), default=None)
+    return {
+        "concepts": len(state["concepts"]),
+        "mastered": sum(1 for v in concepts if not v["shaky"] and v["interval_days"] >= MASTERED_INTERVAL),
+        "shaky": sum(1 for v in state["concepts"].values() if v["shaky"]),
+        "due": len(due),
+        "quizzed": sum(v["times_quizzed"] for v in state["concepts"].values()),
+        "streak_days": streak(dates),
+        "learning_days": len(dates),
+        "last_session": iso_date(dates[0]) if dates else None,
+        "days_since_last_session": (today() - dates[0]).days if dates else None,
+        "top_mistake": {"class": top_mistake[0], "count": top_mistake[1]["count"]} if top_mistake else None,
+    }
+
+
+def flat(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value)).strip()
+
+
+def card_back(item: dict) -> str:
+    notes = [flat(n) for n in item.get("notes", []) if flat(n)]
+    if notes:
+        return " / ".join(notes)
+    return f"Explain {flat(item['name'])} in your own words: what it is, why it matters, and one way it fails."
+
+
+def export(state: dict, fmt: str, shaky_only: bool) -> str:
+    items = sorted(state["concepts"].items(), key=lambda pair: (not pair[1]["shaky"], pair[0]))
+    if shaky_only:
+        items = [pair for pair in items if pair[1]["shaky"]]
+    if fmt == "anki":
+        lines = ["#separator:tab", "#html:false", "#tags column:3"]
+        for slug, item in items:
+            tags = ["vibe-learn", slugify(item["stack"])] + (["shaky"] if item["shaky"] else [])
+            front = f"{flat(item['name'])} ({flat(item['stack'])})"
+            lines.append("\t".join(field.replace("\t", " ") for field in (front, card_back(item), " ".join(tags))))
+        return "\n".join(lines) + "\n"
+    if fmt == "csv":
+        buffer = io.StringIO()
+        writer = csv.writer(buffer, lineterminator="\n")
+        writer.writerow(["slug", "name", "stack", "shaky", "next_review", "interval_days", "last_result", "back"])
+        for slug, item in items:
+            writer.writerow([slug, item["name"], item["stack"], str(item["shaky"]).lower(), item["next_review"],
+                             item["interval_days"], item["last_result"] or "", card_back(item)])
+        return buffer.getvalue()
+    lines = ["# vibe-learn flashcards", ""]
+    for slug, item in items:
+        lines.extend([f"## {flat(item['name'])}" + (" ⚠️ shaky" if item["shaky"] else ""),
+                      f"*{flat(item['stack'])} · next review {item['next_review']}*", "",
+                      "<details><summary>Answer</summary>", "", card_back(item), "", "</details>", ""])
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def write_export(project: Path, state: dict, fmt: str, out: str | None, shaky_only: bool) -> dict:
+    if fmt not in EXPORT_FORMATS:
+        raise ValueError(f"format must be one of: {', '.join(sorted(EXPORT_FORMATS))}")
+    target = Path(out).expanduser() if out else project / ".vibe-learn" / "export" / f"flashcards.{EXPORT_FORMATS[fmt]}"
+    if not target.is_absolute():
+        target = project / target
+    content = export(state, fmt, shaky_only)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    cards = sum(1 for slug, item in state["concepts"].items() if item["shaky"] or not shaky_only)
+    return {"exported": cards, "format": fmt, "path": str(target)}
+
+
 def render(state: dict) -> str:
     profile = state["profile"]
     lines = ["# vibe-learn progress", "", "Generated from `.vibe-learn/state.json`; edit state through the progress CLI.", "",
              "## Status", "", f"- level: {profile['level']}", f"- density: {profile['density']}",
-             f"- interview: {str(profile['interview']).lower()}", "", "## Concepts", ""]
+             f"- interview: {str(profile['interview']).lower()}", ""]
+    summary = stats(state)
+    lines.extend(["## Stats", "", f"- concepts: {summary['concepts']} ({summary['mastered']} mastered, {summary['shaky']} shaky)",
+                  f"- due now: {summary['due']}", f"- streak: {summary['streak_days']} day(s); learning days: {summary['learning_days']}",
+                  "", "## Concepts", ""])
     for slug, item in sorted(state["concepts"].items(), key=lambda pair: (pair[1]["next_review"], pair[0])):
         lines.extend([f"### {slug}", f"- name: {item['name']}", f"- stack: {item['stack']}",
                       f"- first_seen: {item['first_seen']}", f"- last_seen: {item['last_seen']}",
@@ -224,8 +340,10 @@ def command(args: argparse.Namespace) -> object:
     if args.command == "validate": validate_state(state); return {"valid": True, "schema_version": SCHEMA_VERSION}
     if args.command == "render": write_render(project, state); return {"rendered": True}
     if args.command == "teach":
-        slug, _ = concept(state, args.name, args.stack)
-        state["sessions"].insert(0, {"date": iso_date(today()), "concepts": [slug], "shaky": []})
+        slug, item = concept(state, args.name, args.stack)
+        if args.note:
+            add_unique(item["notes"], safe_text(args.note, "note")); item["notes"] = item["notes"][-MAX_NOTES:]
+        add_unique(today_session(state)["concepts"], slug)
     elif args.command == "result":
         if args.concept not in state["concepts"]: raise ValueError(f"unknown concept: {args.concept}")
         if args.outcome not in OUTCOMES: raise ValueError("outcome must be correct, partial, or wrong")
@@ -234,6 +352,9 @@ def command(args: argparse.Namespace) -> object:
         elif args.outcome == "partial": interval, shaky = 2, True
         else: interval, shaky = min(14, max(2, item["interval_days"] * 2)), False
         item["interval_days"] = interval; item["next_review"] = iso_date(today() + dt.timedelta(days=interval)); item["shaky"] = shaky
+        session = today_session(state)
+        if shaky: add_unique(session["shaky"], args.concept)
+        elif args.concept in session["shaky"]: session["shaky"].remove(args.concept)
     elif args.command == "mistake":
         if args.mistake_class not in MISTAKE_CLASSES: raise ValueError("unknown mistake class")
         evidence = safe_text(args.evidence, "evidence"); item = state["mistake_patterns"].setdefault(args.mistake_class, {"count": 0, "first_seen": iso_date(today()), "last_seen": iso_date(today()), "evidence": []})
@@ -244,8 +365,15 @@ def command(args: argparse.Namespace) -> object:
     elif args.command == "due":
         due = [dict(slug=k, **v) for k, v in state["concepts"].items() if v["shaky"] or parse_date(v["next_review"]) <= today()]
         return sorted(due, key=lambda x: (not x["shaky"], x["next_review"]))[:args.limit]
+    elif args.command == "stats":
+        return stats(state)
+    elif args.command == "export":
+        return write_export(project, state, args.format, args.out, args.shaky_only)
     elif args.command == "recap":
-        return {"concepts": [s for session in state["sessions"] if session["date"] == iso_date(today()) for s in session.get("concepts", [])], "shaky": [k for k, v in state["concepts"].items() if v["shaky"]]}
+        todays = [session for session in state["sessions"] if session["date"] == iso_date(today())]
+        return {"concepts": list(dict.fromkeys(s for session in todays for s in session.get("concepts", []))),
+                "shaky_today": list(dict.fromkeys(s for session in todays for s in session.get("shaky", []))),
+                "shaky": [k for k, v in state["concepts"].items() if v["shaky"]]}
     else: raise ValueError(f"unsupported command: {args.command}")
     state["sessions"] = state["sessions"][:MAX_SESSIONS]; save_state(project, state); write_render(project, state); return state
 
@@ -254,14 +382,16 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__); p.add_argument("--project", default="."); sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("init"); m = sub.add_parser("migrate"); m.add_argument("--dry-run", action="store_true")
     sub.add_parser("validate"); sub.add_parser("render")
-    t = sub.add_parser("teach"); t.add_argument("--concept", dest="name", required=True); t.add_argument("--name", dest="name_override"); t.add_argument("--stack", required=True)
+    t = sub.add_parser("teach"); t.add_argument("--concept", dest="name", required=True); t.add_argument("--name", dest="name_override"); t.add_argument("--stack", required=True); t.add_argument("--note")
     # --concept is the documented alias; --name is accepted for compatibility with the plan interface.
     t.set_defaults(name=None)
     r = sub.add_parser("result"); r.add_argument("--concept", required=True); r.add_argument("--outcome", required=True)
     mm = sub.add_parser("mistake"); mm.add_argument("--class", dest="mistake_class", required=True); mm.add_argument("--evidence", required=True)
     pr = sub.add_parser("profile"); pr.add_argument("--level", choices=sorted(LEVELS)); pr.add_argument("--density", choices=sorted(DENSITIES))
     d = sub.add_parser("due"); d.add_argument("--limit", type=int, default=4)
-    sub.add_parser("recap"); return p
+    sub.add_parser("recap"); sub.add_parser("stats")
+    e = sub.add_parser("export"); e.add_argument("--format", choices=sorted(EXPORT_FORMATS), default="anki")
+    e.add_argument("--out"); e.add_argument("--shaky-only", action="store_true"); return p
 
 
 def main() -> int:

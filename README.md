@@ -8,7 +8,7 @@ A [Claude Code](https://claude.com/claude-code) skill that turns "the AI wrote i
 
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-6C3EF5)](https://code.claude.com/docs/en/skills)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 
 <br/>
 
@@ -35,12 +35,14 @@ Vibe coding is fast, but it has a cost: you end up with a working app you can't 
 - Across sessions → canonical **`.vibe-learn/state.json`**, generated **`.vibe-learn/progress.md`**, and **`/vibe-learn review`** (spaced repetition).
 - When ready to practice → bounded **`/vibe-learn challenge`** and explain-it-yourself **`/vibe-learn teach-back`**.
 - End of day → **`/vibe-learn recap`**.
+- Track momentum → **`/vibe-learn stats`** (streak, mastered, due) and a gentle *welcome back* nudge after a break.
+- Take it offline → **`/vibe-learn export`** to Anki, CSV, or Markdown flashcards.
 
 It changes *nothing* about how the code itself gets written. It only adds teaching around it.
 
 ---
 
-## Architecture (v1.3)
+## Architecture (v1.4)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -62,6 +64,7 @@ It changes *nothing* about how the code itself gets written. It only adds teachi
                              ▼
               .vibe-learn/state.json  ←── canonical state
               .vibe-learn/progress.md ←── generated report
+              .vibe-learn/export/     ←── Anki / CSV / MD flashcards
 ```
 
 | Layer | Role |
@@ -134,11 +137,13 @@ Command is namespaced as `/vibe-learn:vibe-learn` with this method. Update with 
 | `/vibe-learn recap` | Session recap + progress update |
 | `/vibe-learn review` | Spaced review of due / shaky concepts |
 | `/vibe-learn status` | Show current mode state |
+| `/vibe-learn stats` | Streak, learning days, mastered / shaky / due concepts |
+| `/vibe-learn export [anki\|csv\|md] [shaky]` | Export concepts as flashcards (Anki by default) |
 | `/vibe-learn challenge` | Bounded project-grounded practice task |
 | `/vibe-learn teach-back` | Explain a feature in your own words and get evaluated |
 | `/vibe-learn off` | Turn off |
 
-Plain language works too: *"teach me as you build"*, *"recap what I learned"*, *"quiz me like an interview"*, *"review my shaky concepts"*.
+Plain language works too: *"teach me as you build"*, *"recap what I learned"*, *"make me Anki cards"*, *"what's my streak?"*, *"quiz me like an interview"*, *"review my shaky concepts"*.
 
 ### Levels
 
@@ -170,6 +175,15 @@ When useful, the skill creates/updates:
 ```
 
 Stores concept names, quiz results, review dates, mistake evidence, and profile settings — **not** secrets, prompts, or source. Add `.vibe-learn/` to `.gitignore` if progress is personal. V1.2 Markdown migrates with a backup.
+
+### Flashcard export
+
+```bash
+python3 ~/.claude/skills/vibe-learn/scripts/progress.py --project . export              # Anki (.tsv)
+python3 ~/.claude/skills/vibe-learn/scripts/progress.py --project . export --format md --shaky-only
+```
+
+The Anki file includes import headers — in Anki, **File → Import** and pick `.vibe-learn/export/flashcards.tsv`. Card answers come from the one-line takeaways Claude records when teaching; concepts without one get an explain-it-yourself prompt.
 
 ---
 
@@ -253,7 +267,8 @@ vibe-learn/
 - [x] Deterministic state and V1.2 migration *(v1.3)*
 - [x] Bounded challenge and teach-back workflows *(v1.3)*
 - [x] Recurring-mistake taxonomy and compact learning map *(v1.3)*
-- [ ] Optional export of progress for Anki / flashcards
+- [x] Learning streaks, stats, and welcome-back nudge *(v1.4)*
+- [x] Export progress to Anki / CSV / Markdown flashcards *(v1.4)*
 - [ ] Multi-agent / Cursor-oriented packaging notes
 
 Ideas and PRs welcome.

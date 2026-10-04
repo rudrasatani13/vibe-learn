@@ -1,11 +1,11 @@
 ---
 name: vibe-learn
-description: "Turns vibe coding into active learning. While active, teach major concepts after meaningful code, explain real bug classes, use optional non-blocking quizzes, and close the loop with deterministic progress, challenge practice, teach-back, spaced review, and recurring-mistake detection. Use when the user invokes /vibe-learn or asks to learn while building, recap, review, diagnose, challenge, or explain code."
+description: "Turns vibe coding into active learning. While active, teach major concepts after meaningful code, explain real bug classes, use optional non-blocking quizzes, and close the loop with deterministic progress, challenge practice, teach-back, spaced review, learning streaks, flashcard export, and recurring-mistake detection. Use when the user invokes /vibe-learn or asks to learn while building, recap, review, diagnose, challenge, see stats, export flashcards, or explain code."
 when_to_use: "User invokes /vibe-learn, asks to learn or understand while building, requests a recap or review, wants an interview, challenge, or teach-back, or says teach me as you code."
-argument-hint: "[on|off|status|recap|review|diagnose|challenge|teach-back|interview|quiet|dense|normal] [beginner|intermediate|advanced]"
+argument-hint: "[on|off|status|stats|recap|review|diagnose|challenge|teach-back|export|interview|quiet|dense|normal] [beginner|intermediate|advanced]"
 ---
 
-# vibe-learn — learn while you vibe code (v1.3)
+# vibe-learn — learn while you vibe code (v1.4)
 
 When active, teach around the user's build without changing the implementation or blocking progress. Prefer silence over spam. Load the targeted reference when needed:
 
@@ -15,9 +15,11 @@ When active, teach around the user's build without changing the implementation o
 
 ## Commands
 
-`/vibe-learn` or `on` activates learning. `off`/`stop` disables it. Level tokens are `beginner`, `intermediate`, and `advanced`; density tokens are `quiet`, `normal`, and `dense`; `interview` toggles interview questions. Existing commands remain supported: `status`, `recap`, `review`, and `diagnose`. V1.3 adds `challenge [concept|file|feature]` and `teach-back [file|feature|concept]`.
+`/vibe-learn` or `on` activates learning. `off`/`stop` disables it. Level tokens are `beginner`, `intermediate`, and `advanced`; density tokens are `quiet`, `normal`, and `dense`; `interview` toggles interview questions. Existing commands remain supported: `status`, `recap`, `review`, and `diagnose`. V1.3 adds `challenge [concept|file|feature]` and `teach-back [file|feature|concept]`. V1.4 adds `stats` and `export [anki|csv|md] [shaky]`.
 
 Parse tokens in any order. On activation, load `.vibe-learn/state.json` if available; otherwise use intermediate/normal and mention that persistence will be initialized when useful. Never make a diagnostic or state failure block the user's coding task.
+
+**Welcome back.** On activation with existing state, run `progress.py stats` once. If `days_since_last_session` is 3 or more and anything is due, open with one line such as "Welcome back — 5 concepts are due since your last session (12 days ago). `/vibe-learn review` when you want a 2-minute warm-up." If a streak is 3+ days, you may mention it in a few words. Never guilt-trip about gaps, never repeat the nudge in the same session, and never delay the user's task for it.
 
 ## Session state
 
@@ -38,7 +40,7 @@ Challenge tasks must be project-grounded, isolated, safe, and 5–20 minutes. St
 Record a result only after an answer or attempt is actually evaluated. Use the deterministic script where practical:
 
 ```bash
-python <skill-directory>/scripts/progress.py --project "$PWD" teach --concept "<name>" --stack "<stack>"
+python <skill-directory>/scripts/progress.py --project "$PWD" teach --concept "<name>" --stack "<stack>" --note "<one-line takeaway>"
 python <skill-directory>/scripts/progress.py --project "$PWD" result --concept "<slug>" --outcome correct|partial|wrong
 ```
 
@@ -46,7 +48,7 @@ python <skill-directory>/scripts/progress.py --project "$PWD" result --concept "
 
 Canonical state is `.vibe-learn/state.json`; `.vibe-learn/progress.md` is generated human-readable output. Use `scripts/progress.py` for mutations. It validates, migrates V1.2 Markdown, calculates dates, caps sessions, and writes atomically. If state is malformed or unavailable, report once and continue with session-only learning; never silently reset it.
 
-Never store source code, prompts, file contents, credentials, environment values, or long notes. Only bounded concept metadata and safe evidence may be persisted. Record recurring mistakes only with concrete evidence in user-written code or the user's answer, never from code written entirely by the agent. Taxonomy and escalation rules are in `references/progress.md`.
+Never store source code, prompts, file contents, credentials, environment values, or long notes. Only bounded concept metadata and safe evidence may be persisted. A `--note` is a single plain-language takeaway (it becomes the flashcard answer), never code or a quote from the project. Record recurring mistakes only with concrete evidence in user-written code or the user's answer, never from code written entirely by the agent. Taxonomy and escalation rules are in `references/progress.md`.
 
 ## Existing workflow semantics
 
@@ -54,6 +56,8 @@ Never store source code, prompts, file contents, credentials, environment values
 - `recap`: report only concepts taught this session, shaky items actually observed, one concrete micro-task, and persistence status.
 - `review`: prioritize shaky then due concepts, two to four at a time, and update outcomes through the state engine.
 - `diagnose`: ask two short non-blocking questions, calibrate level, and persist it when possible.
+- `stats`: show streak, learning days, concepts learned/mastered/shaky, due count, and the top recurring mistake as a compact card. Celebrate progress briefly; no leaderboards or pressure.
+- `export [anki|csv|md] [shaky]`: run `progress.py export --format <fmt>` (add `--shaky-only` for `shaky`), report the path and card count, and for Anki say to use File → Import. Default format is `anki`.
 - `off`: suppress every teaching block until reactivated.
 
 ## Optional hook
